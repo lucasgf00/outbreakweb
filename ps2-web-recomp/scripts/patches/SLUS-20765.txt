@@ -1,0 +1,95 @@
+# Code patches applied by eerecomp --patches to the translated overlays only (see docs/notes/network.md).
+# DNAS bypass: netdnas.bin 0x7507C0 / 0x7507D0 are the auth steppers netwk.bin polls every frame
+# (they jump to the DNAS state machine at 0x7507E0). Return 1 = "authenticated" at once:
+#   sb zero,0(a0)   (state byte = idle)   addiu v0,zero,1   jr ra   nop
+netdnas:7507c0 a0800000 24020001 03e00008 00000000
+netdnas:7507d0 a0800000 24020001 03e00008 00000000
+
+# Network menu (netwk.bin, docs/notes/protocol.md 6.4 in reoutbreak). State 0 of the NETWORK menu
+# (GO ONLINE / EDIT ACCOUNT, handler 0x607E80) rewritten: instead of clearing the login name and
+# password buffers it asks the runtime (private syscall 0x7F00: a0 password 0x8A64E0, a1 account
+# field of the NET save 0x38D880, a2 1 = may choose GO ONLINE, a3 login name 0x8A64F0), which
+# fills PS2_NET_PASSWORD / PS2_NET_ACCOUNT. Result 2 (first time in the run, account set) skips
+# the menu: cursor 0 (GO ONLINE), state 2 with a fade-out, as if X had been pressed.
+netwk:607ebc 0c17de44 24040035 0c17dd6c 00000000
+netwk:607ecc 0c17dd70 00000000 0c17dd98 00000000
+netwk:607edc 3c04008a 248464e0 3c050039 24a5d880
+netwk:607eec 24060001 24870010 24037f00 0000000c
+netwk:607efc 2450ffff 2c430001 3c01006e a423f158
+netwk:607f0c 2403000a 1e000005 a423f154 2404000d
+netwk:607f1c 0c17dda0 0000282d 0000802d 3c01006e
+netwk:607f2c 9022f151 0000202d 24050014 0200302d
+netwk:607f3c 24420001 00501021 a022f151 0c17db34
+netwk:607f4c 0000802d 100000ca 0000102d
+# Second entry to the same menu (0x608204 path): password buffer filled by syscall 0x7F01.
+netwk:608670 3c04008a 248464e0 24037f01 0000000c
+netwk:608680 00000000
+# DNAS EULA (handler 0x609750): state 0 goes straight to state 2 (the "I agree" exit) with a
+# fade-out instead of showing the 5 pages and the agree dialog: a2 = 1, state += 2.
+netwk:6097c4 24060001
+netwk:6097d8 24420002
+# "A NET file has been found. Will you load it?" (state 4 of 0x606780 flow): answer YES at
+# once instead of reading the YES/NO menu (0x5F6BE0) whose cursor starts on NO.
+netwk:6068a4 24020001
+# LOGIN NAME / PASSWORD screen (menu 14, handler 0x608780). State 0 rewritten (0x6087EC-0x608860):
+# private syscall 0x7F02 (a0 = password 0x8A64E0) returns 2 the first time in the run when the
+# runtime preloaded a password; then the menu is not opened and the state goes to 2 with a
+# fade-out, as if ENTRY had been pressed (state 2 returns 1 = log in). Otherwise (1) the menu
+# opens as before with the cursor on PASSWORD. (The 10-frame input delay of the original is gone.)
+netwk:6087ec 3c04008a 248464e0 24037f02 0000000c
+netwk:6087fc 0c17dd6c 0040802d 0c17dd70 00000000
+netwk:60880c 0c17de34 00000000 0c17dd98 00000000
+netwk:60881c 2602ffff 14400007 3c01006e 2404000e
+netwk:60882c 0c17dda0 24050002 24020001 3c01006e
+netwk:60883c a422f158 9022f151 0000202d 24050014
+netwk:60884c 2606ffff 00501021 0c17db34 a022f151
+netwk:60885c 10000103 0000802d
+# SERVER SELECT always FREE MODE (docs/notes/protocol.md 6.7 in reoutbreak). 0x8AA2B3 = 1 FREE MODE
+# (UP TOWN: areas, room list, the creator starts) / 0 SCENARIO MODE (DOWN TOWN: auto-matching that
+# our server does not drive; both clients load an empty map and never exchange 0x0F). The three
+# writes in netwk.bin store 1: the left/right toggle (0x5F35D0 sb zero -> sb v0, v0 = 1), the
+# confirm through the cursor table (0x5DD838 lb v0,(v0) -> addiu v0,zero,1) and the screen init
+# (0x5F6560 lb v0,0x8de(s1) -> addiu v0,zero,1).
+netwk:5f35d0 a022a2b3
+netwk:5dd838 24020001
+netwk:5f6560 24020001
+
+# Network menus, generic hooks (docs/notes/network.md 12 in reoutbreak). The X check 0x5F6AF0 (behind
+# 0x5F6B70) and the d-pad read 0x5F6AA0 ask the runtime (private syscalls 0x7F03 / 0x7F04, a0 = ra =
+# the screen that asks). The runtime returns what the original reads plus, once per run, the automatic
+# presses that skip NETWORK CONNECTION, Select Network Configuration, the news, SERVER SELECT and
+# UP TOWN (PS2_NET_AUTO=0 turns them off). X still plays the cursor sound (0x5F6A80).
+netwk:5f6af0 27bdfff0 ffbf0000 03e0202d 24037f03
+netwk:5f6b00 0000000c 10400004 00000000 0c17daa0
+netwk:5f6b10 00000000 24020001 dfbf0000 03e00008
+netwk:5f6b20 27bd0010
+netwk:5f6aa0 03e0202d 24037f04 0000000c 03e00008
+netwk:5f6ab0 00000000
+
+# Lobby button check 0x570AD0 (mask in a0): the screens below call a trampoline in the padding after
+# the code (0x60A100): private syscall 0x7F05 (a0 mask, a1 ra) returns 1 for an automatic press, else
+# it tail-calls the original. 0x60A124: d-pad/buttons of the netcnf GUI list (syscall 0x7F06 -> a0,
+# v0 = a0 & 0x20, the two instructions it replaces at 0x5E6C9C in state 1 = Select Network Configuration).
+netwk:60a100 03e0282d 24037f05 0000000c 14400003
+netwk:60a110 00000000 0815c2b4 00000000 03e00008
+netwk:60a120 00000000 24037f06 0000000c 0040202d
+netwk:60a130 03e00008 30820020
+netwk:5e6c9c 0c182849 00000000
+netwk:5dd800 0c182840
+netwk:5cba98 0c182840
+netwk:5cbb7c 0c182840
+
+# RULE (create room, FREE MODE): offer the 5 File #1 scenarios. 0x5CCCE8 builds the Scenario row list
+# from the unlocked-scenario bits of the save (u32 at 0x321EF4, only bit 0 on a new card); the list
+# reads it with lw v1,0x2394(a2) at 0x5CCD30 -> addiu v1,zero,0x1F (bits 0..4). Online RULE only.
+netwk:5ccd30 2403001f
+
+# "Your Network Configuration file has been loaded... Press the X button" (netcnf GUI message 0x34, network.md 13):
+# the pad reads of the message states 0xD (0x5E7ACC/0x5E7AD0 -> a1), 0xE (0x5E7B08/0x5E7B0C -> a1) and 0xF
+# (0x5E7C08/0x5E7C0C -> v0) go through private syscall 0x7F07, which adds X once per run while message 0x34 is up.
+# Trampolines in the padding after the code: 0x60A138 (result to a1), 0x60A148 (result to v0).
+netwk:60a138 24037f07 0000000c 03e00008 0040282d
+netwk:60a148 24037f07 0000000c 03e00008 00000000
+netwk:5e7acc 0c18284e 00000000
+netwk:5e7b08 0c18284e 00000000
+netwk:5e7c08 0c182852 00000000

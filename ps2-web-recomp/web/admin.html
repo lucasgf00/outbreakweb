@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel del dueño</title>
+<style>
+  :root { color-scheme: dark; --bg: #090707; --card: #141010; --line: #2a2222; --line-2: #3d3333; --text: #e2dcd3; --muted: #9a938b;
+    --faint: #6f6861; --accent: #b8231f; --gold: #c9a46a; --grid: #2c2626; --axis: #3d3535;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #9085e9;
+    --serif: Georgia, 'Times New Roman', serif; --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); overflow-x: hidden; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px max(16px, calc((100vw - 1240px) / 2)); border-bottom: 1px solid #1e1818; }
+  h1 { margin: 0; font: 600 17px/1.2 var(--serif); letter-spacing: .18em; text-transform: uppercase; }
+  h1 b { color: var(--accent); font-weight: 600; }
+  .grow { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; border-right: 1px solid var(--line-2); background: #1a1515; color: var(--muted); padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: #2a1010; color: var(--text); }
+  button.btn { border: 1px solid var(--line-2); background: #1a1515; color: var(--text); padding: 6px 11px; border-radius: 7px; font: inherit; font-size: 13px; cursor: pointer; }
+  button.btn:hover, .seg button:hover { border-color: var(--accent); }
+  main { max-width: 1240px; margin: 0 auto; padding: 18px 16px 40px; display: flex; flex-direction: column; gap: 18px; }
+  h2 { margin: 0 0 10px; font: 600 12px/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+  .muted { color: var(--muted); } .small { font-size: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font: 600 26px/1.2 var(--sans); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tile .s { color: var(--faint); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+  .live .v::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0ca30c; margin: 0 8px 4px 0; vertical-align: middle; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { fill: var(--muted); font: 11px var(--sans); }
+  .bars { display: flex; flex-direction: column; gap: 6px; }
+  .bar { display: grid; grid-template-columns: minmax(80px, 44%) 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+  .bar .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .bar .t { height: 12px; background: #1d1818; border-radius: 0 4px 4px 0; }
+  .bar .f { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .bar .c { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; min-width: 3.5em; }
+  .empty { color: var(--faint); font-size: 13px; padding: 6px 0; }
+  .pie { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .pie svg { width: 150px; flex: none; }
+  .pie .legend { flex-direction: column; gap: 4px; margin: 0; font-size: 13px; }
+  .pie .legend span b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; margin-left: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  td:last-child, th:last-child { text-align: right; }
+  .scroll { overflow-x: auto; }
+  details summary { cursor: pointer; color: var(--muted); }
+  #login { max-width: 420px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: 10px; }
+  #login input { font: inherit; color: var(--text); background: #1a1515; border: 1px solid var(--line-2); border-radius: 7px; padding: 9px 10px; width: 100%; }
+  #login .err { color: #e66767; min-height: 1.5em; }
+  .tip { position: fixed; pointer-events: none; background: #1f1919; border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 9px; font-size: 12px; z-index: 5; white-space: nowrap; }
+  .tip b { font-weight: 600; }
+  [hidden] { display: none !important; }
+  footer { color: var(--faint); font-size: 12px; text-align: center; padding: 0 16px 24px; }
+  /* moderation */
+  .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); column-gap: 18px; max-height: 70vh; overflow-y: auto; }
+  .plist .empty, .plist .more { grid-column: 1 / -1; }
+  .more { color: var(--muted); font-size: 12px; padding: 8px 4px 0; }
+  .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip { font-size: 11px; padding: 0 7px; border-radius: 9px; border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap; }
+  .chip.bad { border-color: #6a2a2a; color: #e88; } .chip.on { border-color: #1f5a2f; color: #7ccf8e; } .chip.said { border-color: #4a3f2a; color: var(--gold); }
+  button.sm { border: 1px solid var(--line-2); background: #1a1515; color: var(--muted); padding: 2px 9px; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer; }
+  button.sm:hover { color: var(--text); border-color: var(--accent); }
+  button.sm.danger { color: #e88; border-color: #5a2525; }
+  .pl { padding: 7px 4px; border-bottom: 1px solid var(--line); }
+  .pl .top { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .pl .where { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+  .search { display: flex; gap: 8px; margin-bottom: 8px; max-width: 420px; }
+  input.in, select.in { font: inherit; color: var(--text); background: #1a1515; border: 1px solid var(--line-2); border-radius: 7px; padding: 6px 9px; width: 100%; min-width: 0; }
+  #mod td { vertical-align: top; overflow-wrap: anywhere; }
+  #mod .scroll table { min-width: 600px; }   /* narrow screens: the table scrolls inside its card, not the page */
+  dialog { background: var(--card); color: var(--text); border: 1px solid var(--line-2); border-radius: 10px; padding: 16px; width: min(440px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0, 0, 0, .65); }
+  dialog h3 { margin: 0 0 8px; font: 600 16px/1.3 var(--sans); }
+  dialog form { display: flex; flex-direction: column; gap: 10px; }
+  dialog .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  dialog .quote { background: #1a1515; border-left: 3px solid var(--line-2); padding: 6px 9px; font-size: 13px; overflow-wrap: anywhere; }
+  dialog label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  dialog label.check { flex-direction: row; align-items: center; gap: 8px; }
+  button.btn.danger { background: #3a1010; border-color: var(--accent); }
+  #mod-msg { min-height: 1.4em; font-size: 13px; color: var(--gold); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Outbreak<b>·</b>Web <span class="muted" style="letter-spacing:.06em">— panel</span></h1>
+  <div class="seg" id="view" role="tablist" aria-label="Sección" hidden>
+    <button type="button" data-v="metrics" role="tab">Métricas</button><button type="button" data-v="mod" role="tab">Moderación</button>
+  </div>
+  <span class="grow"></span>
+  <div class="seg" id="range" role="group" aria-label="Rango" hidden>
+    <button type="button" data-r="today">Hoy</button><button type="button" data-r="7d">7 días</button><button type="button" data-r="30d">30 días</button><button type="button" data-r="90d">90 días</button>
+  </div>
+  <button type="button" class="btn" id="refresh" hidden>Actualizar</button>
+  <button type="button" class="btn" id="logout" hidden>Salir</button>
+</header>
+
+<form id="login" hidden>
+  <h2>Entrar</h2>
+  <label for="tok" class="muted">Token de administrador (<code>REO_ADMIN_TOKEN</code>). Se guarda solo en esta pestaña.</label>
+  <input id="tok" type="password" autocomplete="current-password" spellcheck="false" required>
+  <button class="btn" type="submit">Entrar</button>
+  <div class="err" id="err" role="alert"></div>
+</form>
+
+<main id="app" hidden>
+  <section>
+    <h2>Ahora</h2>
+    <div class="tiles" id="live"></div>
+  </section>
+  <section>
+    <h2 id="sum-title">Resumen</h2>
+    <div class="tiles" id="sum"></div>
+  </section>
+  <div class="grid2">
+    <section class="card"><h2>Visitas</h2><div id="ch-web"></div></section>
+    <section class="card"><h2>Online</h2><div id="ch-online"></div></section>
+  </div>
+  <div class="grid3">
+    <section class="card"><h2>Partidas por escenario</h2><div id="b-scn"></div></section>
+    <section class="card"><h2>Partidas por jugadores</h2><div id="b-pl"></div><h2 style="margin-top:14px">Duración de las partidas online</h2><div id="b-gdur"></div></section>
+    <section class="card"><h2>Países (visitantes)</h2><div id="p-cc"></div></section>
+  </div>
+  <div class="grid3">
+    <section class="card"><h2>Jugar: juego y modo</h2><div id="b-mode"></div></section>
+    <section class="card"><h2>Navegador y WebGPU</h2><div id="b-br"></div><div id="b-gpu" style="margin-top:12px"></div></section>
+    <section class="card"><h2>Idioma, dispositivo y resolución</h2><div id="b-lang"></div><div id="b-mob" style="margin-top:12px"></div><div id="b-scale" style="margin-top:12px"></div></section>
+  </div>
+  <div class="grid3">
+    <section class="card"><h2>Duración de la sesión de juego</h2><div id="b-sdur"></div></section>
+    <section class="card"><h2>Errores y desconexiones</h2><div id="b-err"></div></section>
+    <section class="card"><h2>Páginas vistas</h2><div id="b-pv"></div></section>
+  </div>
+  <section class="card">
+    <details><summary>Tabla por período</summary><div class="scroll" id="t-series" style="margin-top:10px"></div></details>
+  </section>
+  <section class="card">
+    <details><summary>Todos los contadores del rango</summary><div class="scroll" id="t-all" style="margin-top:10px"></div></details>
+  </section>
+</main>
+
+<main id="mod" hidden>
+  <div id="mod-msg" role="status" aria-live="polite"></div>
+  <section class="card">
+    <h2>Aviso a todos los jugadores</h2>
+    <p class="muted small" style="margin:0 0 6px">Aparece como banner arriba de la web en ~45 s (pestañas con el motor nuevo).</p>
+    <div class="search"><input class="in" id="an-text" maxlength="200" autocomplete="off" placeholder="Ej.: Mantenimiento en 10 minutos" aria-label="Texto del aviso"></div>
+    <div class="row" style="margin-top:8px;gap:8px;align-items:center">
+      <select class="in" id="an-min" aria-label="Duración"><option value="10">10 min</option><option value="30" selected>30 min</option><option value="60">1 hora</option><option value="240">4 horas</option><option value="1440">24 horas</option></select>
+      <button type="button" class="btn" id="an-send">Publicar</button>
+      <button type="button" class="btn" id="an-clear">Quitar aviso</button>
+    </div>
+    <p class="muted small" id="an-now" style="margin:8px 0 0"></p>
+    <h2 style="margin-top:16px">Enlace de Discord</h2>
+    <p class="muted small" style="margin:0 0 6px">Se muestra en el pre-menú (arriba y al pie). Vacío = se oculta. Cambia en ~45 s sin redeploy.</p>
+    <div class="row" style="gap:8px;align-items:center">
+      <input class="in" id="dc-url" maxlength="120" autocomplete="off" placeholder="https://discord.gg/xxxxxxx" aria-label="Enlace de Discord" style="flex:1">
+      <button type="button" class="btn" id="dc-save">Guardar</button>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Reportes de jugadores</h2>
+    <div class="row" style="margin-bottom:6px;gap:8px;align-items:center">
+      <button type="button" class="btn" id="pr-refresh">Actualizar</button>
+      <label class="check"><input type="checkbox" id="pr-all"> Mostrar también los revisados</label>
+      <span class="muted small" id="pr-count"></span>
+    </div>
+    <p class="muted small" style="margin:0 0 6px">«Del server» son los mensajes que el server todavía tenía de esa persona (verificados). «Vio» son los que el que reporta dice haber visto (los manda su navegador: pueden no ser exactos). «Buscar» lo pone en Jugadores para silenciar o banear.</p>
+    <div class="scroll" id="pr-list"></div>
+  </section>
+  <section class="card">
+    <h2>Reportes de bugs</h2>
+    <div class="row" style="margin-bottom:6px;gap:8px;align-items:center">
+      <button type="button" class="btn" id="rp-refresh">Actualizar</button>
+      <button type="button" class="btn" id="rp-prev">‹ Más nuevos</button>
+      <span class="muted small" id="rp-page"></span>
+      <button type="button" class="btn" id="rp-next">Más viejos ›</button>
+      <label class="check"><input type="checkbox" id="rp-hide"> Ocultar anotados</label>
+    </div>
+    <div class="scroll" id="rp-list"></div>
+  </section>
+  <section class="card">
+    <h2>Jugadores</h2>
+    <div class="search"><input class="in" id="mod-q" type="search" placeholder="Buscar por nombre" maxlength="15" autocomplete="off" spellcheck="false" aria-label="Buscar por nombre"></div>
+    <p class="muted small" style="margin:0 0 6px">Conectados al online, nombres activos en la página (últimos 10 min) y quienes escribieron en el chat (últimos 30 min), aunque ya no estén. El chat se lee desde el sitio.</p>
+    <div class="plist" id="mod-players"></div>
+  </section>
+  <section class="card">
+    <h2>Sanciones activas</h2>
+    <div class="scroll" id="mod-sanctions"></div>
+  </section>
+  <section class="card">
+    <h2>Registro de acciones</h2>
+    <div class="scroll" id="mod-log"></div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlg-form">
+    <h3 id="dlg-title"></h3>
+    <div class="quote" id="dlg-quote" hidden></div>
+    <label id="dlg-dur-l">Duración
+      <select class="in" id="dlg-dur">
+        <option value="10">10 minutos</option><option value="60">1 hora</option><option value="1440">24 horas</option><option value="0">Permanente</option>
+      </select>
+    </label>
+    <label class="check" id="dlg-ip-l"><input type="checkbox" id="dlg-ip"> También a su conexión (IP; no se muestra)</label>
+    <label id="dlg-reason-l">Motivo (opcional)
+      <input class="in" id="dlg-reason" maxlength="120" autocomplete="off" placeholder="Ej.: insultos, spam">
+    </label>
+    <p class="muted small" id="dlg-note" style="margin:0"></p>
+    <div class="row">
+      <button class="btn" value="cancel" type="submit" formnovalidate>Cancelar</button>
+      <button class="btn" id="dlg-ok" value="ok" type="submit"></button>
+    </div>
+  </form>
+</dialog>
+<footer id="foot"></footer>
+<div class="tip" id="tip" hidden></div>
+<script>
+'use strict';
+// Owner's metrics panel: GET /api/admin/metrics?range= with the admin token (X-Admin-Token header, so basic auth in
+// front of /admin can use Authorization), kept in sessionStorage.
+// Keys are "metric|dimension" (server: common/src/reo/common/Metrics.java).
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n || 0).toLocaleString('es');
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dur = (s) => { s = Math.round(s || 0); return s >= 3600 ? Math.floor(s / 3600) + ' h ' + Math.round((s % 3600) / 60) + ' min' : s >= 60 ? Math.round(s / 60) + ' min' : s + ' s'; };
+const GAME = { 'file1-us': 'File #1', 'file2-us': 'File #2', file1: 'File #1', file2: 'File #2', picker: 'Portada', all: 'Total' };
+const LANG = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', other: 'Otro' };
+const SCALE = { 1: '640×512', 2: '1280×1024', 3: '1920×1536' };
+let token = '', range = 'today', data = null;
+try { token = sessionStorage.getItem('reo-admin-token') || ''; range = sessionStorage.getItem('reo-admin-range') || 'today'; } catch (e) {}
+
+let view = 'metrics';
+try { view = sessionStorage.getItem('reo-admin-view') === 'mod' ? 'mod' : 'metrics'; } catch (e) {}
+function show(logged) {
+  $('login').hidden = logged; $('app').hidden = !logged || view !== 'metrics'; $('mod').hidden = !logged || view !== 'mod';
+  for (const id of ['range', 'refresh']) $(id).hidden = !logged || view !== 'metrics';
+  for (const id of ['view', 'logout']) $(id).hidden = !logged;
+  $('foot').hidden = logged && view === 'mod';
+  for (const b of $('view').querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.v === view);
+}
+function logoutWith(msg) {
+  token = ''; try { sessionStorage.removeItem('reo-admin-token'); } catch (e) {}
+  show(false); $('err').textContent = msg || '';
+}
+async function load() {
+  for (const b of $('range').querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.r === range);
+  let r;
+  try { r = await fetch('/api/admin/metrics?range=' + range, { headers: { 'X-Admin-Token': token }, cache: 'no-store' }); }
+  catch (e) { $('foot').textContent = 'Sin conexión con el server.'; return; }
+  if (r.status === 403 || r.status === 404) {
+    token = ''; try { sessionStorage.removeItem('reo-admin-token'); } catch (e) {}
+    show(false); $('err').textContent = r.status === 404 ? 'El server no tiene token de admin (REO_ADMIN_TOKEN).' : 'Token incorrecto.'; return;
+  }
+  if (!r.ok) { $('foot').textContent = 'Error ' + r.status; return; }
+  data = await r.json();
+  show(true);
+  render();
+  if (view === 'mod') modLoad(true);
+}
+$('view').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  view = b.dataset.v; try { sessionStorage.setItem('reo-admin-view', view); } catch (x) {}
+  show(true);
+  if (view === 'mod') modLoad(true);
+});
+$('login').addEventListener('submit', (e) => {
+  e.preventDefault();
+  token = $('tok').value.trim(); $('tok').value = ''; $('err').textContent = '';
+  try { sessionStorage.setItem('reo-admin-token', token); } catch (e) {}
+  load();
+});
+$('logout').addEventListener('click', () => { token = ''; try { sessionStorage.removeItem('reo-admin-token'); } catch (e) {} show(false); });
+$('refresh').addEventListener('click', load);
+$('range').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  range = b.dataset.r; try { sessionStorage.setItem('reo-admin-range', range); } catch (e) {}
+  load();
+});
+
+// ---- helpers over the totals ----
+const T = () => data.totals;
+const tot = (key) => T()[key] || 0;
+function dims(metric) {   // {dim: n} for one metric
+  const o = {};
+  for (const k in T()) { const i = k.indexOf('|'); if (k.slice(0, i) === metric) o[k.slice(i + 1)] = T()[k]; }
+  return o;
+}
+const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+function seriesOf(metric, dim) {   // per-period values; dim undefined = all dims added
+  const n = data.periods.length, out = new Array(n).fill(0);
+  for (const k in data.series) {
+    const i = k.indexOf('|');
+    if (k.slice(0, i) !== metric || (dim !== undefined && k.slice(i + 1) !== dim)) continue;
+    data.series[k].forEach((v, j) => { out[j] += v; });
+  }
+  return out;
+}
+const label = (p) => (p.length > 10 ? p.slice(11) + ' h' : p.slice(8, 10) + '/' + p.slice(5, 7));
+
+// ---- tiles ----
+function tile(k, v, s, live) { return '<div class="tile' + (live ? ' live' : '') + '"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>'; }
+
+// ---- line chart (one axis, counts) with crosshair tooltip ----
+function lineChart(el, series) {
+  const W = 560, H = 220, L = 34, R = 10, Tp = 10, B = 26, n = data.periods.length;
+  const max = Math.max(1, ...series.flatMap((s) => s.values));
+  const nice = (m) => { const p = Math.pow(10, Math.floor(Math.log10(m))); for (const f of [1, 2, 5, 10]) if (f * p >= m) return f * p; return 10 * p; };
+  const top = nice(max), x = (i) => L + (n === 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1)), y = (v) => Tp + (H - Tp - B) * (1 - v / top);
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(series.map((s) => s.name).join(', ')) + '">';
+  for (let g = 0; g <= 4; g++) { const v = top * g / 4; svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + (g ? 'var(--grid)' : 'var(--axis)') + '" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + fmt(v) + '</text>'; }
+  const step = Math.max(1, Math.ceil(n / 8));
+  data.periods.forEach((p, i) => { if (i % step === 0 || i === n - 1) svg += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + label(p) + '</text>'; });
+  for (const s of series) {
+    svg += '<polyline fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + s.values.map((v, i) => x(i) + ',' + y(v)).join(' ') + '"/>';
+    if (n <= 31) s.values.forEach((v, i) => { if (v) svg += '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="3" fill="' + s.color + '" stroke="var(--card)" stroke-width="2"/>'; });
+  }
+  svg += '<line class="xh" x1="0" x2="0" y1="' + Tp + '" y2="' + (H - B) + '" stroke="var(--line-2)" visibility="hidden"/>';
+  svg += '<rect x="' + L + '" y="0" width="' + (W - L - R) + '" height="' + H + '" fill="transparent"/></svg>';
+  el.innerHTML = '<div class="legend">' + series.map((s) => '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + ' · ' + fmt(s.total ?? sum(s.values)) + '</span>').join('') + '</div>' + svg;
+  const sv = el.querySelector('svg'), xh = sv.querySelector('.xh'), tip = $('tip');
+  sv.addEventListener('pointermove', (e) => {
+    const r = sv.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(n - 1, Math.round(n === 1 ? 0 : (px - L) / ((W - L - R) / (n - 1)))));
+    xh.setAttribute('x1', x(i)); xh.setAttribute('x2', x(i)); xh.setAttribute('visibility', 'visible');
+    tip.innerHTML = '<b>' + esc(data.periods[i].replace('T', ' ') + (data.periods[i].length > 10 ? ':00' : '')) + '</b><br>' +
+      series.map((s) => '<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + s.color + ';margin-right:5px"></i>' + esc(s.name) + ': ' + fmt(s.values[i])).join('<br>');
+    tip.hidden = false;
+    tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+  });
+  sv.addEventListener('pointerleave', () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });
+}
+
+// ---- horizontal bars (one color: magnitude of one measure) ----
+function bars(el, obj, opts = {}) {
+  const rows = Object.entries(obj).filter(([, v]) => v > 0);
+  if (opts.sortKey) rows.sort((a, b) => a[0].localeCompare(b[0])); else rows.sort((a, b) => b[1] - a[1]);
+  const total = sum(Object.fromEntries(rows)), max = Math.max(1, ...rows.map((r) => r[1]));
+  el.innerHTML = (opts.title ? '<div class="muted small" style="margin-bottom:4px">' + esc(opts.title) + '</div>' : '') +
+    (rows.length ? '<div class="bars">' + rows.map(([k, v]) => {
+      const name = (opts.names && opts.names(k)) || k;
+      return '<div class="bar" title="' + esc(name + ': ' + fmt(v)) + '"><span class="n">' + esc(name) + '</span><span class="t"><span class="f" style="display:block;width:' + (100 * v / max) + '%"></span></span><span class="c">' + fmt(v) + (opts.pct && total ? ' · ' + Math.round(100 * v / total) + '%' : '') + '</span></div>';
+    }).join('') + '</div>' : '<div class="empty">Sin datos en este rango.</div>');
+}
+
+// ---- donut (countries), top 5 + Otros ----
+function donut(el, obj) {
+  const rows = Object.entries(obj).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) { el.innerHTML = '<div class="empty">Sin datos en este rango.</div>'; return; }
+  const top = rows.slice(0, 5); const rest = rows.slice(5).reduce((a, r) => a + r[1], 0);
+  if (rest) top.push(['Otros', rest]);
+  const total = sum(Object.fromEntries(top)), colors = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', '#6f6861'];
+  const names = new Intl.DisplayNames(['es'], { type: 'region' });
+  const nm = (c) => (c === 'XX' ? 'Desconocido (XX)' : c === 'Otros' ? 'Otros' : (() => { try { return names.of(c) + ' (' + c + ')'; } catch (e) { return c; } })());
+  let a = -Math.PI / 2, svg = '<svg viewBox="0 0 120 120" role="img" aria-label="Países">';
+  top.forEach(([k, v], i) => {
+    const f = v / total;
+    if (f >= 0.9999) { svg += '<circle cx="60" cy="60" r="44" fill="none" stroke="' + colors[i] + '" stroke-width="22"><title>' + esc(nm(k)) + ': ' + v + '</title></circle>'; return; }
+    const a2 = a + f * 2 * Math.PI, p = (t) => (60 + 44 * Math.cos(t)).toFixed(2) + ' ' + (60 + 44 * Math.sin(t)).toFixed(2);
+    svg += '<path d="M ' + p(a) + ' A 44 44 0 ' + (f > 0.5 ? 1 : 0) + ' 1 ' + p(a2) + '" fill="none" stroke="' + colors[i] + '" stroke-width="22"><title>' + esc(nm(k)) + ': ' + v + '</title></path>';
+    if (top.length > 1) svg += '<path d="M ' + p(a2) + ' L ' + (60 + 33 * Math.cos(a2)).toFixed(2) + ' ' + (60 + 33 * Math.sin(a2)).toFixed(2) + ' M ' + p(a2) + ' L ' + (60 + 55 * Math.cos(a2)).toFixed(2) + ' ' + (60 + 55 * Math.sin(a2)).toFixed(2) + '" stroke="var(--card)" stroke-width="2"/>';
+    a = a2;
+  });
+  svg += '<text x="60" y="58" text-anchor="middle" style="fill:var(--text);font-size:16px;font-weight:600">' + fmt(total) + '</text><text x="60" y="73" text-anchor="middle">visitantes</text></svg>';
+  el.innerHTML = '<div class="pie">' + svg + '<div class="legend">' + top.map(([k, v], i) => '<span><i style="background:' + colors[i] + '"></i>' + esc(nm(k)) + '<b>' + fmt(v) + ' · ' + Math.round(100 * v / total) + '%</b></span>').join('') + '</div></div>';
+}
+
+function table(el, head, rows) {
+  el.innerHTML = rows.length ? '<table><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' +
+    rows.map((r) => '<tr>' + r.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>' : '<div class="empty">Sin datos.</div>';
+}
+
+function render() {
+  const live = data.live, players = live.players || {};
+  const online = Object.values(players).reduce((a, b) => a + b, 0);
+  $('live').innerHTML = tile('Conectados al lobby', fmt(online), Object.entries(players).map(([g, n]) => (GAME[g] || g) + ': ' + n).join(' · '), true) +
+    tile('Salas abiertas', fmt(live.rooms), fmt(live.rooms_in_game) + ' en partida') +
+    tile('Cuentas registradas', fmt(live.accounts), 'nombres del lobby US');
+  const rn = { today: 'hoy', '7d': 'últimos 7 días', '30d': 'últimos 30 días', '90d': 'últimos 90 días' }[data.range];
+  $('sum-title').textContent = 'Resumen · ' + rn;
+  const start = dims('start'), gdurN = sum(dims('gdur_n')), gdurS = sum(dims('gdur_s')), sessN = sum(dims('sess_n')), sessS = sum(dims('sess_s'));
+  $('sum').innerHTML =
+    tile('Páginas vistas', fmt(sum(dims('pv'))), 'portada ' + fmt(tot('pv|picker')) + ' · juegos ' + fmt(tot('pv|file1') + tot('pv|file2'))) +
+    tile('Visitantes únicos', fmt(tot('uv|all')), data.range === 'today' ? 'id al azar del día' : 'suma de los únicos de cada día') +
+    tile('Jugar', fmt(start.offline || 0), 'Jugar online: ' + fmt(start.online || 0)) +
+    tile('Logins al lobby', fmt(sum(dims('login'))), 'jugadores distintos: ' + fmt(sum(dims('players')))) +
+    tile('Cuentas nuevas', fmt(tot('acct_new|all'))) +
+    tile('Salas creadas', fmt(sum(dims('room')))) +
+    tile('Partidas iniciadas', fmt(sum(dims('gstart'))), 'terminadas: ' + fmt(sum(dims('gend')))) +
+    tile('Duración media de partida', gdurN ? dur(gdurS / gdurN) : '—', 'del START a la vuelta a la sala') +
+    tile('Sesión de juego media', sessN ? dur(sessS / sessN) : '—', fmt(sessN) + ' sesiones') +
+    tile('Pico de conectados', fmt(tot('peak|all')), Object.entries(dims('peak')).filter(([k]) => k !== 'all').map(([g, n]) => (GAME[g] || g) + ' ' + n).join(' · ')) +
+    tile('Errores y desconexiones', fmt(sum(dims('err'))));
+  lineChart($('ch-web'), [
+    { name: 'Páginas vistas', color: 'var(--s1)', values: seriesOf('pv') },
+    { name: 'Visitantes únicos', color: 'var(--s2)', values: seriesOf('uv') },
+    { name: 'Partidas en el navegador', color: 'var(--s3)', values: seriesOf('start') }]);
+  const peak = seriesOf('peak', 'all');
+  lineChart($('ch-online'), [
+    { name: 'Logins', color: 'var(--s1)', values: seriesOf('login') },
+    { name: 'Salas creadas', color: 'var(--s2)', values: seriesOf('room') },
+    { name: 'Partidas iniciadas', color: 'var(--s3)', values: seriesOf('gstart') },
+    { name: 'Pico de conectados', color: 'var(--s4)', values: peak, total: Math.max(0, ...peak) }]);
+  const scn = dims('gstart_scn');
+  bars($('b-scn'), scn, { names: (k) => k.replace(/^file1-us /, 'File #1 · ').replace(/^file2-us /, 'File #2 · ') });
+  bars($('b-pl'), dims('gstart_pl'), { sortKey: true, pct: true, names: (k) => k.replace('P', ' jugadores') });
+  bars($('b-gdur'), dims('gdur_b'), { sortKey: true, names: (k) => k.slice(2) });
+  donut($('p-cc'), dims('uv_country'));
+  bars($('b-mode'), dims('start_mode'), { pct: true, names: (k) => k.replace('file1', 'File #1').replace('file2', 'File #2').replace(' offline', ' · Jugar').replace(' online', ' · Jugar online') });
+  bars($('b-br'), dims('uv_browser'), { pct: true, title: 'Navegador (visitantes)', names: (k) => ({ chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox', safari: 'Safari', opera: 'Opera', samsung: 'Samsung Internet', other: 'Otro' }[k] || k) });
+  bars($('b-gpu'), dims('uv_webgpu'), { pct: true, title: 'WebGPU (visitantes)', names: (k) => (k === 'yes' ? 'Con WebGPU' : 'Sin WebGPU') });
+  bars($('b-lang'), dims('uv_lang'), { pct: true, title: 'Idioma (visitantes)', names: (k) => LANG[k] || k });
+  bars($('b-mob'), dims('uv_mobile'), { pct: true, title: 'Dispositivo', names: (k) => (k === 'mobile' ? 'Táctil / celular' : 'Escritorio') });
+  bars($('b-scale'), dims('start_scale'), { sortKey: true, pct: true, title: 'Resolución elegida al jugar', names: (k) => SCALE[k] || k });
+  bars($('b-sdur'), dims('sess_b'), { sortKey: true, names: (k) => k.slice(2) });
+  bars($('b-err'), dims('err'), { names: (k) => k.replace('file1-us', 'File #1').replace('file2-us', 'File #2').replace(' timeout', ': sin respuesta').replace(' left in game', ': salió en partida').replace('web busy', 'Web: pasarela llena').replace('web off', 'Web: sin conexión a la pasarela').replace(/^api /, 'API: error en /api/') });
+  bars($('b-pv'), dims('pv'), { pct: true, names: (k) => GAME[k] || k });
+  const cols = [['pv', 'Vistas'], ['uv', 'Únicos'], ['start', 'Jugar'], ['login', 'Logins'], ['acct_new', 'Cuentas'], ['room', 'Salas'], ['gstart', 'Partidas'], ['peak|all', 'Pico'], ['err', 'Errores']];
+  table($('t-series'), ['Período'].concat(cols.map((c) => c[1])), data.periods.map((p, i) => [p.replace('T', ' ')].concat(cols.map(([m]) => {
+    const [metric, dim] = m.split('|'); return fmt(seriesOf(metric, dim)[i]); }))).reverse());
+  table($('t-all'), ['Métrica', 'Dimensión', 'Valor'], Object.keys(T()).sort().map((k) => { const i = k.indexOf('|'); return [k.slice(0, i), k.slice(i + 1), fmt(T()[k])]; }));
+  $('foot').textContent = 'Datos de ' + new Date(data.generated).toLocaleString('es') + ' · zona ' + data.zone + ' · sin IPs: el país sale de CF-IPCountry (XX en local).';
+}
+
+// ---- moderation (server: common/src/reo/common/Moderation.java) ----
+// Never shows an address: messages, players and address sanctions carry an opaque ip_ref the server resolves.
+// User text (names, messages, reasons) always goes in with textContent.
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const when = (t) => new Date(t).toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const until = (u) => (u === 0 ? 'Permanente' : when(u));
+const ACT = { mute: 'Silenciar', unmute: 'Quitar silencio', ban: 'Banear', unban: 'Desbanear', delete: 'Borrar mensaje', purge: 'Borrar sus mensajes', kick: 'Desconectar', release: 'Liberar nombre' };
+const mod = { q: '', timer: 0 };
+const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'hace menos de 1 min' : 'hace ' + m + ' min'; };
+async function modFetch(path, body) {
+  let r;
+  try {
+    r = await fetch('/api/admin/mod/' + path, body
+      ? { method: 'POST', headers: { 'X-Admin-Token': token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : { headers: { 'X-Admin-Token': token }, cache: 'no-store' });
+  } catch (e) { $('mod-msg').textContent = 'Sin conexión con el server.'; return null; }
+  if (r.status === 403) { logoutWith('Token incorrecto.'); return null; }
+  if (r.status === 404 && !body) { $('mod-msg').textContent = 'El server no tiene moderación (¿jar viejo o sin REO_ADMIN_TOKEN?).'; return null; }
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { $('mod-msg').textContent = r.status === 429 ? 'Demasiadas acciones seguidas: esperá un momento.' : 'Error: ' + (j.error || r.status); return null; }
+  return j;
+}
+function chip(text, cls) { return el('span', 'chip' + (cls ? ' ' + cls : ''), text); }
+function btn(text, fn, danger) { const b = el('button', 'sm' + (danger ? ' danger' : ''), text); b.type = 'button'; b.addEventListener('click', fn); return b; }
+
+// confirmation dialog: resolves {minutes, reason, alsoIp} or null
+function ask(o) {
+  return new Promise((resolve) => {
+    const d = $('dlg');
+    $('dlg-title').textContent = o.title;
+    $('dlg-quote').hidden = !o.quote; $('dlg-quote').textContent = o.quote || '';
+    $('dlg-dur-l').hidden = !o.dur; $('dlg-dur').value = o.dur === 'ban' ? '0' : '60';
+    $('dlg-ip-l').hidden = !o.ip; $('dlg-ip').checked = false;
+    $('dlg-reason').value = '';
+    $('dlg-note').textContent = o.note || '';
+    $('dlg-ok').textContent = o.ok; $('dlg-ok').className = 'btn' + (o.danger ? ' danger' : '');
+    d.onclose = () => resolve(d.returnValue === 'ok'
+      ? { minutes: Number($('dlg-dur').value), reason: $('dlg-reason').value.trim(), alsoIp: !o.ip ? false : $('dlg-ip').checked } : null);
+    d.returnValue = '';
+    d.showModal();
+    $('dlg-reason').focus();
+  });
+}
+async function act(action, target, opt) {
+  const name = target.name, ipOnly = !name && target.ip_ref;
+  const who = name || ('la conexión IP ' + (target.ip_masked || ''));
+  let a = { minutes: 0, reason: '', alsoIp: false };
+  if (opt && opt.confirm !== false) {
+    a = await ask(opt);
+    if (!a) return;
+  }
+  const body = { action, reason: a.reason || undefined };
+  if (name) body.name = name;
+  if (action === 'mute' || action === 'ban') body.minutes = a.minutes;
+  if (action === 'delete') body.msg_id = target.id;
+  if (ipOnly) body.ip_ref = target.ip_ref;
+  else if (a.alsoIp) { if (target.id) { body.msg_id = target.id; body.also_ip = true; } else body.ip_ref = target.ip_ref; }
+  const r = await modFetch('action', body);
+  if (!r) return;
+  const dTxt = action === 'mute' || action === 'ban' ? ' (' + (a.minutes ? ({ 10: '10 min', 60: '1 h', 1440: '24 h' }[a.minutes] || a.minutes + ' min') : 'permanente') + ')' : '';
+  $('mod-msg').textContent = 'Hecho: ' + ACT[action].toLowerCase() + ' · ' + who + dTxt + (r.purged ? ' · ' + r.purged + ' mensajes borrados' : '') + '.';
+  modLoad(true);
+}
+const muteOpt = (n, q, ip) => ({ title: 'Silenciar a ' + n, quote: q, dur: 'mute', ip, ok: 'Silenciar', note: 'No va a poder escribir en el chat; ve un aviso con la hora en que termina.' });
+const banOpt = (n, q, ip) => ({ title: 'Banear a ' + n, quote: q, dur: 'ban', ip, ok: 'Banear', danger: true, note: 'Se borran sus mensajes, se lo desconecta del online y no puede registrarse, chatear ni entrar al online.' });
+
+function renderPlayers(list) {
+  const box = $('mod-players');
+  box.textContent = '';
+  if (!list.length) { box.append(el('div', 'empty', mod.q ? 'Nadie con ese nombre (online, en la página o que haya escrito en los últimos 30 min).' : 'No hay nadie conectado.')); return; }
+  const MAX = 150;
+  for (const p of list.slice(0, MAX)) {
+    const row = el('div', 'pl'), top = el('div', 'top');
+    top.append(el('b', null, p.name), p.online ? chip('Online · ' + (GAME[p.game] || p.game), 'on') : chip(p.web_last ? 'Solo web' : 'Ya no está'));
+    if (p.chat_last) top.append(chip('Escribió ' + ago(p.chat_last) + ' · ' + p.chat_count + (p.chat_count === 1 ? ' mensaje' : ' mensajes'), 'said'));
+    if (p.muted) top.append(chip('Silenciado', 'bad'));
+    if (p.banned) top.append(chip('Baneado', 'bad'));
+    if (p.registered) top.append(chip('Solo cuenta registrada', ''));
+    const where = p.online ? [p.room ? 'Sala «' + p.room + '»' + (p.in_game ? ' (en partida)' : '') : null, p.area || (p.room ? null : 'Lobby')].filter(Boolean).join(' · ') : p.web_last ? 'En la página' : 'Desconectado';
+    const acts = el('div', 'acts');
+    acts.append(p.muted ? btn('Quitar silencio', () => act('unmute', p, { confirm: false })) : btn('Silenciar', () => act('mute', p, muteOpt(p.name, null, !!p.ip_ref))));
+    acts.append(p.banned ? btn('Desbanear', () => act('unban', p, { confirm: false })) : btn('Banear', () => act('ban', p, banOpt(p.name, null, !!p.ip_ref)), true));
+    if (p.online) acts.append(btn('Desconectar', () => act('kick', p, { title: 'Desconectar a ' + p.name + ' del online', ok: 'Desconectar', danger: true,
+      note: 'Cierra su sesión del lobby. Si no está baneado, puede volver a entrar.' }), true));
+    acts.append(btn('Borrar sus mensajes', () => act('purge', p, { title: 'Borrar todos los mensajes de ' + p.name, ok: 'Borrar', danger: true,
+      note: 'Se borran todos sus mensajes guardados (Comunidad y salas); desaparecen para todos en la próxima actualización del chat. No lo silencia.' }), true));
+    acts.append(btn('Liberar nombre', () => act('release', p, { title: 'Liberar el nombre ' + p.name, ok: 'Liberar', danger: true,
+      note: 'Borra la cuenta del nombre: cualquiera (por ejemplo, su dueño desde otro navegador) puede volver a registrarlo. No borra su progreso, que está en su memory card. Si está conectado, desconectalo antes.' }), true));
+    row.append(top, el('div', 'where', where + (p.since && (p.online || p.web_last) ? ' · desde ' + when(p.since) : '')), acts);
+    box.append(row);
+  }
+  if (list.length > MAX) box.append(el('div', 'more', 'Hay ' + list.length + '; se muestran ' + MAX + '. Usá el buscador.'));
+}
+function tableEl(head, rows) {
+  const t = el('table'), tr = el('tr');
+  for (const h of head) tr.append(el('th', null, h));
+  t.append(tr);
+  for (const r of rows) {
+    const x = el('tr');
+    for (const c of r) { const td = el('td'); if (c instanceof Node) td.append(c); else td.textContent = c; x.append(td); }
+    t.append(x);
+  }
+  return t;
+}
+function renderSanctions(s, log) {
+  const sb = $('mod-sanctions'), lb = $('mod-log');
+  sb.textContent = ''; lb.textContent = '';
+  if (!s.length) sb.append(el('div', 'empty', 'No hay sanciones activas.'));
+  else sb.append(tableEl(['Tipo', 'A quién', 'Motivo', 'Por', 'Desde', 'Hasta', ''], s.map((x) => [
+    x.kind === 'ban' ? 'Ban' : 'Silencio',
+    x.what === 'ip' ? 'IP ' + x.ip_masked + ' · ' + x.ip_ref : x.name,
+    x.reason || '—', x.by || '—', x.since ? when(x.since) : '—', until(x.until),
+    btn('Quitar sanción', () => act('un' + x.kind, x.what === 'ip' ? { ip_ref: x.ip_ref, ip_masked: x.ip_masked } : { name: x.name }, { confirm: false }))])));
+  if (!log.length) lb.append(el('div', 'empty', 'Todavía no hay acciones.'));
+  else lb.append(tableEl(['Cuándo', 'Por', 'Acción', 'A quién', 'Detalle'], log.map((e) => [
+    when(e.t), e.by || '—', ACT[e.action] || e.action,
+    [e.name, e.ip_masked ? 'IP ' + e.ip_masked : null].filter(Boolean).join(' + ') || '—',
+    [e.minutes !== undefined && (e.action === 'mute' || e.action === 'ban') ? (e.minutes ? e.minutes + ' min' : 'permanente') : null,
+     e.purged !== undefined ? e.purged + (e.purged === 1 ? ' mensaje' : ' mensajes') : null,
+     e.reason ? 'motivo: ' + e.reason : null, e.text ? '«' + e.text + '»' : null].filter(Boolean).join(' · ') || '—'])));
+}
+async function xFetch(path, body) {
+  let r;
+  try {
+    r = await fetch(path, body
+      ? { method: 'POST', headers: { 'X-Admin-Token': token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : { headers: { 'X-Admin-Token': token }, cache: 'no-store' });
+  } catch (e) { $('mod-msg').textContent = 'Sin conexión con el server.'; return null; }
+  if (r.status === 403) { logoutWith('Token incorrecto.'); return null; }
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { $('mod-msg').textContent = 'Error: ' + (j.error || r.status); return null; }
+  return j;
+}
+async function loadAnnounce() {
+  try {
+    const j = await (await fetch('/api/announce', { cache: 'no-store' })).json();
+    $('an-now').textContent = j.text && j.until > Date.now() ? 'Activo hasta ' + when(j.until) + ': «' + j.text + '»' : 'No hay aviso activo.';
+    if (document.activeElement !== $('dc-url')) $('dc-url').value = j.discord || '';
+  } catch (e) {}
+}
+$('dc-save').addEventListener('click', async () => {
+  const j = await xFetch('/api/admin/announce', { discord: $('dc-url').value.trim() });
+  if (j) { $('mod-msg').textContent = j.discord ? 'Discord guardado.' : 'Discord quitado.'; loadAnnounce(); }
+});
+const RP_PAGE = 15;
+const rp = { all: [], page: 0, noted: {} };
+try { rp.noted = JSON.parse(localStorage.getItem('reo-reports-noted') || '{}'); } catch (e) {}
+function rpSave() { try { localStorage.setItem('reo-reports-noted', JSON.stringify(rp.noted)); } catch (e) {} }
+function rpRender() {
+  const list = $('rp-hide').checked ? rp.all.filter((r) => !rp.noted[r.id]) : rp.all;
+  const pages = Math.max(1, Math.ceil(list.length / RP_PAGE));
+  rp.page = Math.min(rp.page, pages - 1);
+  const rows = list.slice(rp.page * RP_PAGE, (rp.page + 1) * RP_PAGE).map((r) => {
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!rp.noted[r.id]; cb.setAttribute('aria-label', 'Anotado');
+    cb.addEventListener('change', () => { if (cb.checked) rp.noted[r.id] = 1; else delete rp.noted[r.id]; rpSave(); rpRender(); });
+    const ua = el('span'); ua.textContent = (r.ua || '').slice(0, 80) + (r.ip_ref ? ' · ' + r.ip_ref : '');
+    if (r.diag) {
+      const dt = el('details'), sm = el('summary'), pre = el('pre');
+      sm.textContent = 'Datos técnicos';
+      let txt = r.diag;
+      try { const d = JSON.parse(r.diag), log = d.log || []; delete d.log; txt = JSON.stringify(d, null, 1) + '\n\n' + log.join('\n'); } catch (e) {}
+      pre.textContent = txt; pre.style.cssText = 'white-space:pre-wrap;max-height:240px;overflow:auto;font-size:11px;margin:4px 0';
+      dt.append(sm, pre); ua.append(el('br'), dt);
+    }
+    return [cb, when(r.t), r.game || '—', r.text, ua];
+  });
+  const box = $('rp-list'); box.textContent = '';
+  $('rp-page').textContent = list.length ? 'Página ' + (rp.page + 1) + ' de ' + pages + ' · ' + list.length + ' reportes' : '';
+  $('rp-prev').disabled = rp.page === 0; $('rp-next').disabled = rp.page >= pages - 1;
+  if (!rows.length) { box.textContent = 'Sin reportes.'; return; }
+  box.appendChild(tableEl(['Anotado', 'Cuándo', 'Juego', 'Texto', 'Navegador · ref'], rows));
+}
+async function loadReports() {
+  const j = await xFetch('/api/admin/reports?limit=1000');
+  if (!j) return;
+  rp.all = (j.reports || []).slice().sort((x, y) => y.id - x.id);
+  rpRender();
+}
+$('rp-prev').addEventListener('click', () => { rp.page--; rpRender(); });
+$('rp-next').addEventListener('click', () => { rp.page++; rpRender(); });
+$('rp-hide').addEventListener('change', () => { rp.page = 0; rpRender(); });
+$('an-send').addEventListener('click', async () => {
+  const text = $('an-text').value.trim();
+  if (!text) { $('mod-msg').textContent = 'Escribí el texto del aviso.'; return; }
+  const j = await xFetch('/api/admin/announce', { text, minutes: parseInt($('an-min').value, 10) });
+  if (j) { $('mod-msg').textContent = 'Aviso publicado.'; $('an-text').value = ''; loadAnnounce(); }
+});
+$('an-clear').addEventListener('click', async () => {
+  const j = await xFetch('/api/admin/announce', { clear: true });
+  if (j) { $('mod-msg').textContent = 'Aviso quitado.'; loadAnnounce(); }
+});
+$('rp-refresh').addEventListener('click', loadReports);
+
+// player reports (server Social.java): GET/POST /api/admin/player-reports; "Revisado" is kept on the server
+const PR_WHY = { insult: 'Insultos', spam: 'Spam', cheat: 'Trampas', name: 'Nombre inapropiado', other: 'Otro' };
+const pr = { all: [], open: 0 };
+function prLines(list, label) {
+  if (!list || !list.length) return null;
+  const d = el('details'), s = el('summary', null, label + ' (' + list.length + ')'), ul = el('ul');
+  ul.style.cssText = 'margin:4px 0;padding-left:18px';
+  for (const m of list) ul.appendChild(el('li', null, (m.t > 1e12 ? when(m.t) + ' ' : '') + (m.channel ? '[' + (m.channel === 'room' ? 'sala' : 'comunidad') + '] ' : '') + m.text));
+  d.append(s, ul);
+  return d;
+}
+function prRender() {
+  const list = $('pr-all').checked ? pr.all : pr.all.filter((r) => !r.done);
+  $('pr-count').textContent = pr.open + ' sin revisar · ' + pr.all.length + ' en total';
+  const box = $('pr-list'); box.textContent = '';
+  if (!list.length) { box.textContent = 'Sin reportes de jugadores.'; return; }
+  box.appendChild(tableEl(['Revisado', 'Cuándo', 'Reportado', 'Motivo', 'Detalle', 'Quién reporta'], list.map((r) => {
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!r.done; cb.setAttribute('aria-label', 'Revisado');
+    cb.addEventListener('change', async () => { const j = await xFetch('/api/admin/player-reports', { id: r.id, done: cb.checked }); if (j) loadPlayerReports(); else cb.checked = !cb.checked; });
+    const who = el('span'); who.append(el('b', null, r.target), ' ');
+    who.appendChild(btn('Buscar', () => { $('mod-q').value = r.target; mod.q = String(r.target).replace(/[^A-Za-z0-9]/g, ''); modLoad(true); $('mod-q').scrollIntoView({ block: 'center' }); }));
+    if (r.target_24h > 1) who.append(' ', chip(r.target_24h + ' en 24 h', 'bad'));
+    const det = el('span');
+    if (r.note) det.append(el('span', null, '«' + r.note + '»'));
+    for (const d of [prLines(r.server, 'Del server'), prLines(r.seen, 'Vio')]) if (d) det.append(d);
+    if (!det.childNodes.length) det.textContent = '—';
+    return [cb, when(r.t), who, PR_WHY[r.reason] || r.reason, det, (r.reporter || '—') + (r.game ? ' · ' + r.game : '') + (r.ip_ref ? ' · ' + r.ip_ref : '')];
+  })));
+}
+async function loadPlayerReports() {
+  const j = await xFetch('/api/admin/player-reports?limit=500');
+  if (!j) return;
+  pr.all = j.reports || []; pr.open = j.open || 0;
+  prRender();
+}
+$('pr-refresh').addEventListener('click', loadPlayerReports);
+$('pr-all').addEventListener('change', prRender);
+
+async function modLoad(all) {
+  clearTimeout(mod.timer);
+  if (!token || view !== 'mod') return;
+  if (all && !mod.extras) { mod.extras = true; loadAnnounce(); loadReports(); loadPlayerReports(); }
+  // players and sanctions every 10 s (the live chat is read on the public page, not here)
+  const [p, s] = await Promise.all([modFetch('players' + (mod.q ? '?q=' + encodeURIComponent(mod.q) : '')), modFetch('sanctions')]);
+  if (p) renderPlayers(p.players || []);
+  if (s) renderSanctions(s.sanctions || [], s.log || []);
+  if (token && view === 'mod') mod.timer = setTimeout(() => modLoad(false), document.hidden ? 30000 : 10000);
+}
+let qTimer = 0;
+$('mod-q').addEventListener('input', () => {
+  clearTimeout(qTimer);
+  qTimer = setTimeout(() => { mod.q = $('mod-q').value.replace(/[^A-Za-z0-9]/g, ''); modLoad(true); }, 300);
+});
+
+if (token) load(); else show(false);
+setInterval(() => { if (token && !document.hidden && view === 'metrics') load(); }, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Never commit game-derived files: disc images, executables, generated code, builds, captures.
+*.iso
+*.chd
+*.cso
+*.7z
+*.zip
+*.elf
+*.irx
+*.afs
+*.raw
+*.pcap
+*.ppm
+generated/
+build/
+games/
+tools/emsdk/
+# Secrets and private config
+*.pem
+*.key
+*.env
+!*.env.example
+local.properties
+deploy-out/
+__pycache__/
+*.pyc

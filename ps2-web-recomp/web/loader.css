@@ -1,0 +1,15 @@
+/* loader.css: the loading overlay over the canvas and the progress line on the pre-menu (see loader.js). */
+.ldr { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: radial-gradient(ellipse at 50% 45%, #160909 0%, #050404 70%); color: #e2dcd3; text-align: center; }
+.ldr[hidden], .ldr-mini[hidden], .ldr [hidden], .ldr-mini [hidden] { display: none; }
+.ldr-box { width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.ldr-stage { margin: 0; font-size: 15px; letter-spacing: .02em; overflow-wrap: anywhere; }
+.ldr-hint { margin: 0; font-size: 13px; color: #c9a46a; }
+.ldr-bar { position: relative; width: 100%; height: 4px; border-radius: 2px; background: #2a2222; overflow: hidden; }
+.ldr-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #b8231f; transition: width .25s linear; }
+.ldr-bar.busy i { width: 30%; animation: ldr-slide 1.4s ease-in-out infinite; }
+@keyframes ldr-slide { 0% { left: -30%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .ldr-bar.busy i { animation: none; left: 35%; } }
+.ldr-mini { width: min(360px, 100%); display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: #9a938b; }
+.ldr-mini .ldr-mtext { overflow-wrap: anywhere; }
+.ldr-mini.err .ldr-mtext { color: #f0b4b4; }

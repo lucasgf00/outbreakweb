@@ -1,0 +1,61 @@
+# SLUS-20984 (File #2): boot, Scenario Select -> "wild things", Kevin + Mark + Jim, NORMAL,
+# intro FMV, zoo entrance cutscene, then Kevin walks forward and opens the inventory.
+frames 9300
+300:start
+600:start
+750:cross
+900:start
+1050:cross
+1200:start
+1350:cross
+1500:start
+1650:cross
+1800:start
+1950:cross
+2100:start
+2250:cross
+2400:start
+2550:cross
+2700:start
+2850:cross
+3000:start
+# Scenario Select: second scenario (wild things)
+3110:right
+3200:cross
+# character, partners, difficulty
+3300:start
+3450:cross
+3600:start
+3750:cross
+3900:start
+4050:cross
+4200:start
+4350:cross
+# NOW LOADING goes black; then skip the FMV
+4402:sync:black
+4500:start
+4650:cross
+4800:start
+4950:cross
+5100:start
+5250:cross
+5400:start
+# the zoo entrance appears
+5591:sync:visible
+# cutscene dialogue
+6600:cross
+6750:cross
+6900:cross
+7050:cross
+7200:cross
+7350:cross
+7500:cross
+7650:cross
+7800:cross
+7950:cross
+8100:cross
+8250:cross
+8400:cross
+# in control: walk to the truck, open the inventory
+8910:up:120
+9040:start

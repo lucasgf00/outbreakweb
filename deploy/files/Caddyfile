@@ -1,0 +1,174 @@
+# outbreakweb.com behind Cloudflare (orange cloud, SSL Full (strict), WebSockets on).
+# Installed by reo-activate as /etc/caddy/Caddyfile. Validate: caddy validate --config /etc/caddy/Caddyfile
+#
+# Paths can be overridden for tests with environment variables:
+#   REO_CADDY_DIR (snippets + tls, default /etc/caddy), REO_WEB (release root, default /opt/reo/current),
+#   REO_ISO (shared ISO root, default /opt/reo/shared/iso).
+{
+	admin localhost:2019
+	servers {
+		# Real client IP: CF-Connecting-IP, trusted only from Cloudflare's ranges
+		# (the snippet is written by reo-cf-ips from https://www.cloudflare.com/ips-v4 and ips-v6).
+		import {$REO_CADDY_DIR:/etc/caddy}/reo-cloudflare.caddy
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+(reo_tls) {
+	# Cloudflare origin certificate (only Cloudflare trusts it; Full (strict) mode).
+	tls {$REO_CADDY_DIR:/etc/caddy}/tls/origin.pem {$REO_CADDY_DIR:/etc/caddy}/tls/origin.key
+}
+
+(reo_headers) {
+	header {
+		# SharedArrayBuffer for the game's threads needs a cross-origin isolated page.
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Embedder-Policy require-corp
+		Cross-Origin-Resource-Policy same-origin
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		# The pages use inline scripts and styles (single-file pages) and WebAssembly.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss://outbreakweb.com; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+}
+
+www.outbreakweb.com {
+	import reo_tls
+	redir https://outbreakweb.com{uri} permanent
+}
+
+outbreakweb.com {
+	import reo_tls
+	import reo_headers
+
+	# Access log without IPs, to diagnose 5xx and timings (reo-status sums the last hour): JSON, rotated.
+	# Kept: time, method, host, path, status, duration, size. Dropped: client address and port, request headers
+	# (User-Agent, cookies, tokens), TLS details, response headers and the query string. The country comes from
+	# Cloudflare (CF-IPCountry). REO_CADDY_LOG only moves the file for tests.
+	log {
+		output file {$REO_CADDY_LOG:/var/log/caddy}/access.log {
+			mode 0640
+			roll_size 20MiB
+			roll_keep 10
+			roll_keep_for 336h
+		}
+		format filter {
+			request>remote_ip delete
+			request>remote_port delete
+			request>client_ip delete
+			request>headers delete
+			request>tls delete
+			request>uri regexp \?.*$ ""
+			resp_headers delete
+			user_id delete
+			wrap json
+		}
+	}
+	log_append country {http.request.header.CF-IPCountry}
+
+	# Owner's panel: HTTP basic auth (Caddy) on top of the admin token (the page sends it in X-Admin-Token).
+	@admin path /admin /admin/ /admin/* /api/admin /api/admin/*
+	basic_auth @admin {
+		import {$REO_CADDY_DIR:/etc/caddy}/reo-admin-users.caddy
+	}
+
+	handle /admin* {
+		header Cache-Control no-store
+		header X-Robots-Tag "noindex, nofollow"
+		root * {$REO_WEB:/opt/reo/current}/admin
+		rewrite * /index.html
+		file_server
+	}
+
+	# Development endpoints never leave the machine.
+	handle /api/dev/* {
+		respond 404
+	}
+
+	handle /api/* {
+		request_body {
+			max_size 8KB
+		}
+		reverse_proxy 127.0.0.1:8088 {
+			# The server takes the client address from X-Real-IP (api.real_ip_header) only from loopback.
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
+	# Ethernet-over-WebSocket gateway (wss://outbreakweb.com/eth).
+	handle /eth {
+		reverse_proxy 127.0.0.1:8765 {
+			header_up X-Real-IP {client_ip}
+			stream_close_delay 5m
+		}
+	}
+
+	# The game reads the disc from the cacheable pieces below. The whole-file ISO is only answered to HEAD (the
+	# page reads the size from it); any GET is refused, so stale pages with the old reader and scrapers cannot
+	# saturate the uplink.
+	@disc_full {
+		path /file1/disc.iso /file2/disc.iso
+		not method HEAD
+	}
+	handle @disc_full {
+		header Cache-Control "no-store"
+		respond "the disc is served in pieces: reload the page" 410
+	}
+
+	@disc_file1 path /file1/disc.iso
+	handle @disc_file1 {
+		root * {$REO_ISO:/opt/reo/shared/iso}/file1
+		rewrite * /disc.iso
+		header Cache-Control "no-store"
+		file_server
+	}
+
+	@disc_file2 path /file2/disc.iso
+	handle @disc_file2 {
+		root * {$REO_ISO:/opt/reo/shared/iso}/file2
+		rewrite * /disc.iso
+		header Cache-Control "no-store"
+		file_server
+	}
+
+	# Disc pieces (64 MiB, made by reo-pieces from the shared ISO): fixed content, so Cloudflare can cache them
+	# and the VPS sends each piece once instead of every Range read of every player.
+	@disc_pieces path_regexp ^/file[12]/disc/[0-9]{3}\.bin$
+	handle @disc_pieces {
+		root * {$REO_ISO:/opt/reo/shared/iso}
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		root * {$REO_WEB:/opt/reo/current}/web
+		# Engine files with a content hash in the name (ps2web.<hash>.js/.wasm, loader.<hash>.js/.css, written by
+		# ps2-web-recomp/scripts/version_web.py and referenced by the page) never change: one year, immutable.
+		# Only when the file exists, so a 404 is never cached. The disc image and ps2web.data have other names
+		# and never match: they keep the revalidation below, as before.
+		@engine {
+			path_regexp ^/file[0-9]+/(ps2web|loader)\.[0-9a-f]{12}\.(js|wasm|css)$
+			not path *.iso /*/disc*
+			file
+		}
+		header @engine Cache-Control "public, max-age=31536000, immutable"
+		# Everything else (pages, engine.json, games.json, ps2web.data, ...) is revalidated (ETag, a cheap 304),
+		# so a new release shows up at once and always points at its own hashed engine files.
+		@revalidate not {
+			path_regexp ^/file[0-9]+/(ps2web|loader)\.[0-9a-f]{12}\.(js|wasm|css)$
+			file
+		}
+		header @revalidate Cache-Control "no-cache"
+		file_server {
+			precompressed gzip
+		}
+	}
+
+	handle_errors {
+		respond "{err.status_code} {err.status_text}"
+	}
+}

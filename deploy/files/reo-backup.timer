@@ -1,0 +1,10 @@
+[Unit]
+Description=reo-web daily backup
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 UTC
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

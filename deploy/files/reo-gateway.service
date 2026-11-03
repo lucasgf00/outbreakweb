@@ -1,0 +1,42 @@
+[Unit]
+Description=reo-web Ethernet-over-WebSocket gateway (127.0.0.1:8765, behind Caddy at /eth)
+Documentation=file:///opt/reo/current/kit/README.md
+After=network-online.target reo-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=reo
+Group=reo
+WorkingDirectory=/opt/reo/data
+# No -pcap and pcap_dir empty: no traffic is recorded in production.
+ExecStart=/opt/reo/current/gateway/reo-gateway -config /etc/reo/gateway.json
+Restart=always
+RestartSec=2
+MemoryMax=1G
+LimitNOFILE=65536
+UMask=0077
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/opt/reo/data
+
+[Install]
+WantedBy=multi-user.target

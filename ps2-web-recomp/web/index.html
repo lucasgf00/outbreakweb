@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Resident Evil Outbreak</title>
+<style>
+  :root { color-scheme: dark; --bg: #090707; --line: #2a2222; --line-2: #3d3333; --text: #e2dcd3; --muted: #9a938b; --faint: #6f6861; --accent: #b8231f; --gold: #c9a46a;
+    --serif: Georgia, 'Times New Roman', serif; --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% -10%, #2a0c0c 0%, #0d0a0a 45%, var(--bg) 100%) fixed var(--bg);
+    color: var(--text); font: 15px/1.55 var(--sans); overflow-x: hidden; }
+  .top { display: flex; align-items: center; gap: 16px; padding: 10px max(16px, calc((100vw - 1180px) / 2)); border-bottom: 1px solid #1e1818; }
+  .logo { color: var(--text); text-decoration: none; font: 600 17px/1 var(--serif); letter-spacing: .2em; text-transform: uppercase; }
+  .logo b { color: var(--accent); font-weight: 600; }
+  select { margin-left: auto; font: inherit; font-size: 13px; color: inherit; background: #1a1515; border: 1px solid var(--line-2); padding: 5px 8px; border-radius: 6px; }
+  main { flex: 1; width: 100%; max-width: 860px; margin: 0 auto; padding: 56px 16px 40px; display: flex; flex-direction: column; gap: 26px; text-align: center; }
+  h1 { margin: 0; font: 600 clamp(28px, 5.4vw, 52px)/1.05 var(--serif); letter-spacing: .1em; color: #ece6dd; text-transform: uppercase; }
+  h1 span { display: block; margin-top: 8px; font-size: .5em; letter-spacing: .36em; color: var(--accent); }
+  p { margin: 0; color: #c9c2b9; font-size: 17px; }
+  .note { color: var(--faint); font-size: 13px; letter-spacing: .08em; }
+  .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .games a { display: flex; flex-direction: column; gap: 6px; padding: 26px 18px; border: 1px solid #3a3030; border-radius: 10px; background: rgba(19, 16, 16, .94); color: #ebe5dc; text-decoration: none; }
+  .games a:hover, .games a:focus-visible { border-color: var(--accent); background: #2a1010; outline: none; }
+  .games b { font: 600 24px var(--serif); letter-spacing: .14em; text-transform: uppercase; }
+  .games small { color: var(--muted); font-size: 14px; }
+  .games .off { opacity: .45; pointer-events: none; }
+  .last { color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .discord { align-self: center; display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; border-radius: 10px; background: #5865f2; color: #fff; text-decoration: none; font: 600 17px var(--sans); letter-spacing: .04em; box-shadow: 0 4px 18px rgba(88, 101, 242, .35); }
+  .discord:hover, .discord:focus-visible { background: #6d79f5; outline: 2px solid #fff; outline-offset: 2px; }
+  .discord[hidden] { display: none; }
+  footer { border-top: 1px solid #1e1818; padding: 22px 16px calc(26px + env(safe-area-inset-bottom)); text-align: center; color: var(--faint); font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top"><a class="logo" href="./">Outbreak<b>·</b>Web</a><select id="lang" aria-label="Language"></select></header>
+<main>
+  <h1>Resident Evil <span>Outbreak</span></h1>
+  <p id="lead"></p>
+  <nav class="games" id="games" aria-label="File"></nav>
+  <div class="note" id="note"></div>
+  <a class="discord" id="discord" hidden target="_blank" rel="noopener noreferrer">💬 Discord</a>
+</main>
+<footer id="foot"></footer>
+<script>
+// Same language choice as the game pages (localStorage reo-lang: 'auto' or a code; ?lang= wins).
+const T = {
+  es: { auto: 'Automático', lead: 'Elegí tu File. Se juega en el navegador, solo o con amigos.', note: 'Sin instalación · Carga automática', f1: 'Los cinco escenarios originales. Con juego online.', f2: 'Cinco escenarios nuevos. Con juego online.', off: 'No disponible', last: 'Último jugado', foot: 'Proyecto de preservación no oficial, sin relación con Capcom.', err: 'No se pudo cargar la lista de juegos: abrí /file1/ o /file2/.' },
+  en: { auto: 'Automatic', lead: 'Pick your File. Play in your browser, alone or with friends.', note: 'No install · Loads automatically', f1: 'The five original scenarios. With online play.', f2: 'Five new scenarios. With online play.', off: 'Not available', last: 'Last played', foot: 'Unofficial preservation project, not affiliated with Capcom.', err: 'Could not load the game list: open /file1/ or /file2/.' },
+  pt: { auto: 'Automático', lead: 'Escolha seu File. Jogue no navegador, sozinho ou com amigos.', note: 'Sem instalação · Carregamento automático', f1: 'Os cinco cenários originais. Com jogo online.', f2: 'Cinco cenários novos. Com jogo online.', off: 'Indisponível', last: 'Último jogado', foot: 'Projeto de preservação não oficial, sem relação com a Capcom.', err: 'Não foi possível carregar a lista de jogos: abra /file1/ ou /file2/.' },
+  fr: { auto: 'Automatique', lead: 'Choisissez votre File. Jouez dans le navigateur, seul ou entre amis.', note: 'Sans installation · Chargement automatique', f1: 'Les cinq scénarios d\'origine. Avec jeu en ligne.', f2: 'Cinq nouveaux scénarios. Avec jeu en ligne.', off: 'Indisponible', last: 'Dernière partie', foot: 'Projet de préservation non officiel, sans lien avec Capcom.', err: 'Impossible de charger la liste des jeux : ouvrez /file1/ ou /file2/.' },
+  de: { auto: 'Automatisch', lead: 'Wähle dein File. Gespielt wird im Browser, allein oder mit Freunden.', note: 'Keine Installation · Lädt automatisch', f1: 'Die fünf Original-Szenarien. Mit Online-Modus.', f2: 'Fünf neue Szenarien. Mit Online-Modus.', off: 'Nicht verfügbar', last: 'Zuletzt gespielt', foot: 'Inoffizielles Archivierungsprojekt ohne Verbindung zu Capcom.', err: 'Die Spieleliste konnte nicht geladen werden: Öffne /file1/ oder /file2/.' },
+  it: { auto: 'Automatica', lead: 'Scegli il tuo File. Si gioca nel browser, da solo o con gli amici.', note: 'Nessuna installazione · Caricamento automatico', f1: 'I cinque scenari originali. Con gioco online.', f2: 'Cinque nuovi scenari. Con il gioco online.', off: 'Non disponibile', last: 'Ultimo giocato', foot: 'Progetto di conservazione non ufficiale, senza legami con Capcom.', err: 'Impossibile caricare l\'elenco dei giochi: apri /file1/ o /file2/.' },
+  fil: { auto: 'Awtomatiko', lead: 'Piliin ang File mo. Maglaro sa browser, mag-isa o kasama ang mga kaibigan.', note: 'Walang install · Kusang naglo-load', f1: 'Ang limang orihinal na scenario. May online play.', f2: 'Limang bagong scenario. May online play.', off: 'Hindi available', last: 'Huling nilaro', foot: 'Hindi opisyal na preservation project, walang kaugnayan sa Capcom.', err: 'Hindi ma-load ang listahan ng laro: buksan ang /file1/ o /file2/.' },
+};
+const NAMES = { es: 'Español', en: 'English', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano', fil: 'Filipino' };
+const BLURB = { 'SLUS-20765': 'f1', 'SLUS-20984': 'f2' };
+let pref = 'auto';
+try { pref = localStorage.getItem('reo-lang') || 'auto'; } catch (e) {}
+if (!(pref in T)) pref = 'auto';
+const auto = () => { for (const l of navigator.languages || [navigator.language || '']) { const b = String(l).toLowerCase().split('-')[0]; if (b === 'fil' || b === 'tl') return 'fil'; const c = String(l).slice(0, 2).toLowerCase(); if (c in T) return c; } return 'en'; };
+const urlLang = new URLSearchParams(location.search).get('lang');
+let lang = urlLang in T ? urlLang : pref === 'auto' ? auto() : pref;
+let games = null, failed = false, last = '';
+try { last = localStorage.getItem('reo-last-game') || ''; } catch (e) {}
+const sel = document.getElementById('lang');
+function render() {
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  sel.textContent = '';
+  sel.add(new Option(t.auto + (pref === 'auto' ? ' (' + NAMES[lang] + ')' : ''), 'auto'));
+  for (const c in NAMES) sel.add(new Option(NAMES[c], c));
+  sel.value = pref;
+  document.getElementById('lead').textContent = failed ? t.err : t.lead;
+  document.getElementById('note').textContent = t.note;
+  document.getElementById('foot').textContent = t.foot;
+  const nav = document.getElementById('games');
+  nav.textContent = '';
+  for (const g of games || []) {
+    const a = document.createElement('a');
+    a.href = g.path + '/' + location.search;
+    if (!g.ready) a.className = 'off';
+    a.addEventListener('click', () => { try { localStorage.setItem('reo-last-game', g.path); } catch (e) {} });
+    const title = document.createElement('b');
+    title.textContent = g.title;
+    const blurb = document.createElement('small');
+    blurb.textContent = g.ready ? t[BLURB[g.serial]] || g.serial : t.off;
+    a.append(title, blurb);
+    if (g.path === last) {
+      const mark = document.createElement('span');
+      mark.className = 'last';
+      mark.textContent = t.last;
+      a.append(mark);
+    }
+    nav.appendChild(a);
+  }
+}
+sel.addEventListener('change', () => {
+  pref = sel.value;
+  try { localStorage.setItem('reo-lang', pref); } catch (e) {}
+  lang = pref === 'auto' ? auto() : pref;
+  render();
+});
+render();
+fetch('games.json').then((r) => r.json()).then((list) => {
+  games = list;
+  render();
+  const nav = document.getElementById('games');
+  const first = [...nav.querySelectorAll('a:not(.off)')].find((a) => a.querySelector('.last')) || nav.querySelector('a:not(.off)');
+  if (first) first.focus();
+  // Engine prefetch: the last played game when the page is idle, or the one under the pointer/focus. One game
+  // at a time, never with data saver or on a 2G/3G link. The hashed files are cached as immutable (engine.json).
+  const conn = navigator.connection || {};
+  if (conn.saveData || /(^|-)2g|3g/.test(conn.effectiveType || '')) return;
+  let busy = false;
+  const done = new Set();
+  const prefetch = (path) => {
+    if (busy || done.has(path) || !(games || []).some((g) => g.path === path && g.ready)) return;
+    busy = true;
+    done.add(path);
+    fetch(path + '/engine.json', { cache: 'no-cache' }).then((r) => r.json())
+      .then((m) => Promise.all([m.js, m.wasm].map((f) => fetch(path + '/' + f, { credentials: 'same-origin', priority: 'low' })
+        .then((r) => (r.ok && r.body ? r.body.pipeTo(new WritableStream()) : null)))))
+      .catch(() => {}).finally(() => { busy = false; });
+  };
+  nav.addEventListener('pointerover', (e) => { const a = e.target.closest('a'); if (a) prefetch(new URL(a.href).pathname.split('/')[1]); });
+  nav.addEventListener('focusin', (e) => { const a = e.target.closest('a'); if (a) prefetch(new URL(a.href).pathname.split('/')[1]); });
+  nav.addEventListener('touchstart', (e) => { const a = e.target.closest('a'); if (a) prefetch(new URL(a.href).pathname.split('/')[1]); }, { passive: true });
+  if (last) (window.requestIdleCallback || setTimeout)(() => prefetch(last), { timeout: 3000 });
+}).catch(() => { failed = true; render(); });
+// Discord link, set by the owner in /admin (served with the notice at /api/announce); hidden when empty or invalid.
+fetch('/api/announce', { cache: 'no-store' }).then((r) => r.json()).then((a) => {
+  const u = a && typeof a.discord === 'string' ? a.discord.trim() : '';
+  if (!/^https:\/\/(discord\.gg|discord\.com|www\.discord\.com|discordapp\.com)\/[A-Za-z0-9_.\/-]{1,100}$/.test(u)) return;
+  const el = document.getElementById('discord');
+  el.href = u;
+  el.hidden = false;
+}).catch(() => {});
+// Anonymous page view for the owner's metrics panel, same id and opt-out as the game pages (see shell.html).
+(() => {
+  try {
+    if (localStorage.getItem('reo-metrics-off') === '1') return;
+    const d = new Date(), day = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    let v = JSON.parse(localStorage.getItem('reo-mvid') || 'null');
+    if (!v || v.d !== day || !/^[0-9a-f]{16}$/.test(v.v)) {
+      v = { d: day, v: Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, '0')).join('') };
+      localStorage.setItem('reo-mvid', JSON.stringify(v));
+    }
+    const ua = navigator.userAgent;
+    const br = /Edg\//.test(ua) ? 'edge' : /OPR\//.test(ua) ? 'opera' : /SamsungBrowser/.test(ua) ? 'samsung' : /Firefox\//.test(ua) ? 'firefox'
+      : /Chrome\//.test(ua) ? 'chrome' : /Safari\//.test(ua) ? 'safari' : 'other';
+    const body = JSON.stringify({ vid: v.v, page: 'picker', lang, br, mob: matchMedia('(pointer: coarse)').matches, gpu: !!navigator.gpu, ev: [{ t: 'page_view' }] });
+    if (!(navigator.sendBeacon && navigator.sendBeacon('/api/metrics/event', new Blob([body], { type: 'text/plain' }))))
+      fetch('/api/metrics/event', { method: 'POST', body, keepalive: true }).catch(() => {});
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

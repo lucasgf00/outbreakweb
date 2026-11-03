@@ -1,0 +1,46 @@
+[Unit]
+Description=reo-web lobby server (Bioserver1/2 + US kk/app01 + HTTP API 8088), loopback only
+Documentation=file:///opt/reo/current/kit/README.md
+After=network-online.target mariadb.service
+Wants=network-online.target
+Requires=mariadb.service
+
+[Service]
+Type=simple
+User=reo
+Group=reo
+WorkingDirectory=/opt/reo/data/server
+EnvironmentFile=/etc/reo/admin.env
+# REO_REPORT_WEBHOOK (player and bug reports to the staff channel). Optional; 0600 root, systemd reads it
+# before switching to the reo user. A change needs: systemctl restart reo-server.
+EnvironmentFile=-/etc/reo/alerts.env
+ExecStart=/usr/bin/java -Xmx640m -XX:+ExitOnOutOfMemoryError -Djava.awt.headless=true -cp /opt/reo/current/server/reo-bioserver.jar:/usr/share/java/mariadb-java-client.jar reo.Main /etc/reo/server.properties
+Restart=always
+RestartSec=2
+MemoryMax=1G
+LimitNOFILE=65536
+UMask=0077
+SuccessExitStatus=143
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/opt/reo/data
+
+[Install]
+WantedBy=multi-user.target

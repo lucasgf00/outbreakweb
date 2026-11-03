@@ -1,0 +1,13 @@
+[Unit]
+Description=reo-web alerts: checks the site and posts state changes to the staff Discord webhook
+Documentation=file:///opt/reo/current/kit/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/reo-alert run
+StateDirectory=reo-alert
+StateDirectoryMode=0700
+TimeoutStartSec=4min
+Nice=5

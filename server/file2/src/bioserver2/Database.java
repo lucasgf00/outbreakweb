@@ -1,0 +1,407 @@
+/*
+    BioServer2 -Emulation of the long gone server for 
+                Biohazard Outbreak File #2 (Playstation 2)
+
+    Copyright (C) 2013-2019 obsrv.org (no23@deathless.net)
+
+    Modified 2026 by reo-web contributors (see README.md / git history).
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package bioserver2;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * class for managing the bio2fog database
+ */
+public class Database {
+    private final String url = ServerMain.cfg.dbUrl;   // was hardcoded jdbc:mysql://localhost:3306/...
+    private String user = "bioserver";
+    private String password = "xxxxxxxxxxxxxxxx";
+    
+    private Connection con = null;
+    
+    // simple constructor to create a reusable connection to the database
+    public Database(String db_user, String db_password) {
+        this.user = db_user;
+        this.password = db_password;
+        
+        try {
+            con = DriverManager.getConnection(url, user, password);
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        // setup some things on server restart
+        // set area to -1, rooms, slots and gamesessions to 0
+        this.setupDBrestart();
+    }
+    
+    
+    // test connection and create a new one on failure
+    private void testConnection() {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        
+        try {
+            pst = con.prepareStatement("select 1;");
+            rs = pst.executeQuery();
+        } catch (SQLException ex) {
+            try {
+                if (rs != null) {
+                    rs.close();
+                }
+                if (pst != null) {
+                    pst.close();
+                }
+                if (con != null) {
+                    con.close();
+                }            
+            } catch (SQLException ex2) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex2);
+            }
+            // create a new connection
+            try {
+                this.con = DriverManager.getConnection(url, user, password);
+            } catch (SQLException ex1) {
+                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex1);
+            }
+        }
+    }
+
+    
+    // get userid of an existing session
+    public String getUserid(String sessid) {
+        // check it out ;-)
+        this.testConnection();
+        
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        String retval = "";
+        try {
+            pst = con.prepareStatement("select userid from sessions where sessid=?");
+            pst.setString(1, sessid);
+            rs = pst.executeQuery();
+            if(rs.next()){
+                retval = rs.getString("userid");            
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+        
+        return retval;
+    }
+    
+    // get handle/nickname list for a given userid
+    public HNPairs getHNPairs(String userid) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        HNPairs hns = new HNPairs();
+        String nickname;
+        
+        try {
+            pst = con.prepareStatement("select handle,nickname from hnpairs where userid=? limit 0,3");
+            pst.setString(1, userid);
+            rs = pst.executeQuery();
+            while(rs.next()){
+                hns.add(new HNPair(rs.getString("handle"), rs.getString("nickname")));
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+        
+        return hns;
+    }
+    
+    // check if a handles exists
+    // returns true when handle is free
+    public boolean checkHandle(String handle) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        boolean retval = false;
+        
+        try {
+            pst = con.prepareStatement("select count(*) as cnt from hnpairs where handle=?");
+            pst.setString(1, handle);
+            rs = pst.executeQuery();
+            if(rs.next()){
+                if(rs.getInt("cnt") == 0) retval=true;
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+        
+        return retval;        
+    }
+    
+    // insert a new handle/nickname into database
+    public void createNewHNPair(Client cl) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        try {
+            String nickname;
+            try {
+                nickname = new String(cl.getHNPair().getNickname(),"SJIS");
+            } catch (UnsupportedEncodingException ex) {
+                nickname = "sjis";
+            }
+            pst = con.prepareStatement("insert into hnpairs (userid,handle,nickname) values (?,?,?)");
+            pst.setString(1, cl.getUserID());
+            pst.setString(2, new String(cl.getHNPair().getHandle()));
+            pst.setString(3, nickname);
+            pst.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+    }
+    
+    // update handle/nickname of a client
+    public void updateHNPair(Client cl) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        String nickname;
+        try {
+            nickname = new String(cl.getHNPair().getNickname(),"SJIS");
+        } catch (UnsupportedEncodingException ex) {
+            nickname = "sjis";
+        }
+
+        try {
+            pst = con.prepareStatement("update hnpairs set nickname=? where userid=? and handle=?");
+            pst.setString(1, nickname);
+            pst.setString(2, cl.getUserID());
+            pst.setString(3, new String(cl.getHNPair().getHandle()));
+            pst.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }        
+    }
+
+   
+    // set area, room, slot for a user
+    private void setupDBrestart() {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        try {
+            pst = con.prepareStatement("update sessions set area=-1, room=0, slot=0, gamesess=0, state=0");
+            pst.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+    }
+
+    // set area, room, slot for a user and a state
+    public void updateClientOrigin(String userid, int state, int area, int room, int slot) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        try {
+            pst = con.prepareStatement("update sessions set state=?, area=?, room=?, slot=? where userid=?");
+            pst.setInt(1, state);
+            pst.setInt(2, area);
+            pst.setInt(3, room);
+            pst.setInt(4, slot);
+            pst.setString(5, userid);
+            pst.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+    }
+
+
+    // set game for a user
+    public void updateClientGame(String userid, int gamenumber) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        try {
+            String gamenum = Integer.toString(gamenumber);      // TODO: I hate Java for this!
+            pst = con.prepareStatement("update sessions set gamesess=? where userid=?");
+            pst.setString(1, gamenum);
+            pst.setString(2, userid);
+            pst.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+    }
+
+
+    // get the gamenumber of a given userid
+    public int getGameNumber(String userid) {
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        int retval = 0;
+        try {
+            pst = con.prepareStatement("select gamesess from sessions where userid=?");
+            pst.setString(1, userid);
+            rs = pst.executeQuery();
+            if(rs.next()){
+                retval = rs.getInt("gamesess");            
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+        
+        return retval;
+    }
+
+
+    // get message of the day
+    public String getMOTD() {
+        // check it out ;-)
+        this.testConnection();
+        
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+        String retval = "";
+        try {
+            pst = con.prepareStatement("select message from motd where active=1 order by id desc limit 0,1");
+            rs = pst.executeQuery();
+            if(rs.next()){
+                retval = rs.getString("message");            
+            }
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+        } finally {
+            try {
+                if(rs != null) {
+                    rs.close();
+                }
+                if(pst != null) {
+                    pst.close();
+                }
+            } catch (SQLException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.WARNING, null, ex);
+            }
+        }
+        
+        return retval;
+    }    
+
+
+}

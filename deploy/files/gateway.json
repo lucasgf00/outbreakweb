@@ -1,0 +1,29 @@
+{
+  "listen": "127.0.0.1:8765",
+  "path": "/eth",
+  "origin_patterns": ["outbreakweb.com"],
+  "require_origin": true,
+  "trust_proxy": true,
+  "trusted_proxies": ["127.0.0.1", "::1"],
+  "real_ip_header": "X-Real-IP",
+  "network": {"gateway": "10.0.2.2", "client": "10.0.2.15", "prefix_len": 24, "gateway_mac": "52:55:0a:00:02:02", "lease_secs": 86400, "domain_name": "reo.local"},
+  "dns": {"overrides": {"*.reo.capcom.sf.yav4.com": "198.18.0.10", "*.capcom.client.sf.yav4.com": "198.18.0.11", "*.dnas.playstation.org": "198.18.0.20"}, "ttl": 60},
+  "allow": [
+    {"proto": "tcp", "dst": "198.18.0.10:10127", "upstream": "127.0.0.1:10127"},
+    {"proto": "tcp", "dst": "198.18.0.10:80", "upstream": "127.0.0.1:8080"},
+    {"proto": "tcp", "dst": "198.18.0.10:8300", "upstream": "127.0.0.1:8300"},
+    {"proto": "tcp", "dst": "198.18.0.10:8690", "upstream": "127.0.0.1:8690"},
+    {"proto": "udp", "dst": "198.18.0.10:9090", "upstream": "127.0.0.1:9090"},
+    {"proto": "udp", "dst": "198.18.0.11:9090", "upstream": "127.0.0.1:9092"}
+  ],
+  "allow_private_upstreams": [],
+  "limits": {
+    "max_sessions": 2500, "max_sessions_per_ip": 12,
+    "frames_per_sec": 3000, "bytes_per_sec": 2097152,
+    "ip_frames_per_sec": 20000, "ip_bytes_per_sec": 16777216,
+    "connects_per_min_per_ip": 120, "max_flows": 32,
+    "idle_timeout": "15m", "udp_idle": "60s", "dial_timeout": "5s",
+    "max_lifetime": "12h", "log_lines_per_sec": 20
+  },
+  "pcap_dir": ""
+}

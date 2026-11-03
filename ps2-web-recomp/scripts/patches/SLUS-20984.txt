@@ -1,0 +1,61 @@
+# Code patches applied by eerecomp --patches to the translated overlays only (see docs/notes/network.md).
+# DNAS bypass for File #2, same as SLUS-20765: netdnas.bin (loaded at 0x6ED000 here) 0x6ED090 / 0x6ED0A0
+# are the auth steppers (j 0x6ED0B0 with a3 = 0 / 1) that netwk.bin calls (jal at 0x613E24, 0x6149FC,
+# 0x6148D0). Return 1 = "authenticated" at once:
+#   sb zero,0(a0)   (state byte = idle)   addiu v0,zero,1   jr ra   nop
+netdnas:6ed090 a0800000 24020001 03e00008 00000000
+netdnas:6ed0a0 a0800000 24020001 03e00008 00000000
+
+# File #2 netwk.bin (BIN_3, loaded at 0x58D000) is File #1 netwk.bin relocated: the same patches as
+# SLUS-20765.txt with File #2 addresses (docs/notes/protocol.md 7 in reoutbreak). Screen variables move by
+# +0xA340 (state 0x6E9491, timer 0x6E9494, cursor 0x6E9498), login password 0x8A58F0 / name 0x8A5900, the
+# NET save account field 0x3AA300 (NET save at 0x3A9810, account at +0xAF0 as in File #1). Helpers:
+# 0x60D7C0, 0x60D4B0, 0x60D4C0, 0x60D7A0, 0x60D560, 0x60D580 (open menu), 0x60CCC0 (fade), 0x60CA90 (X sound).
+# NETWORK menu (GO ONLINE / EDIT ACCOUNT, handler 0x617D80), state 0 -> private syscall 0x7F00.
+netwk:617dbc 0c1835f0 24040035 0c18352c 00000000
+netwk:617dcc 0c183530 00000000 0c183558 00000000
+netwk:617ddc 3c04008a 248458f0 3c05003b 24a5a300
+netwk:617dec 24060001 24870010 24037f00 0000000c
+netwk:617dfc 2450ffff 2c430001 3c01006f a4239498
+netwk:617e0c 2403000a 1e000005 a4239494 2404000d
+netwk:617e1c 0c183560 0000282d 0000802d 3c01006f
+netwk:617e2c 90229491 0000202d 24050014 0200302d
+netwk:617e3c 24420001 00501021 a0229491 0c183330
+netwk:617e4c 0000802d 100000ca 0000102d
+# Second entry to the same menu: password buffer filled by syscall 0x7F01.
+netwk:618558 3c04008a 248458f0 24037f01 0000000c
+netwk:618568 00000000
+# DNAS EULA (handler 0x61A8A0): straight to the "I agree" exit.
+netwk:61a914 24060001
+netwk:61a928 24420002
+# LOGIN NAME / PASSWORD (menu 14, handler 0x618680), state 0 -> private syscall 0x7F02 (ENTRY).
+netwk:6186dc 3c04008a 248458f0 24037f02 0000000c
+netwk:6186ec 0c18352c 0040802d 0c183530 00000000
+netwk:6186fc 0c1835e8 00000000 0c183558 00000000
+netwk:61870c 2602ffff 14400007 3c01006f 2404000e
+netwk:61871c 0c183560 24050002 24020001 3c01006f
+netwk:61872c a4229498 90229491 0000202d 24050014
+netwk:61873c 2606ffff 00501021 0c183330 a0229491
+netwk:61874c 100000fd 0000802d
+# Generic hooks: X check 0x60CAD0 -> syscall 0x7F03 (a0 = ra), d-pad read 0x60CAB0 -> 0x7F04.
+netwk:60cad0 27bdfff0 ffbf0000 03e0202d 24037f03
+netwk:60cae0 0000000c 10400004 00000000 0c1832a4
+netwk:60caf0 00000000 24020001 dfbf0000 03e00008
+netwk:60cb00 27bd0010
+netwk:60cab0 03e0202d 24037f04 0000000c 03e00008
+netwk:60cac0 00000000
+# Trampolines in the padding after the code (0x623400-0x62343C, 16 free words): lobby button check
+# 0x58DB80 behind syscall 0x7F05; netcnf GUI list pad (0x7F06, cancel = triangle 0x200 in File #2) for the
+# two instructions at 0x60006C (state 1 = Select Network Configuration).
+netwk:623400 03e0282d 24037f05 0000000c 14400003
+netwk:623410 00000000 081636e0 00000000 03e00008
+netwk:623420 00000000 24037f06 0000000c 0040202d
+netwk:623430 03e00008 30820200
+netwk:60006c 0c188d09 00000000
+# CAPCOM Online User Agreement (File #2 only, handler 0x619390, menu I agree / I do not agree / View DNAS EULA):
+# state 0 starts the cursor (0x6E9498) on "I agree" instead of "I do not agree"; the runtime presses X once
+# (rule ra 0x6194D4), which leaves through state 2 like the real "I agree".
+netwk:619440 24020000
+# AREA SELECT X check (jal 0x58DB80 at 0x608F7C) through the lobby trampoline: the runtime enters the first area
+# with PS2_NET_AREA=1 (rule ra 0x608F84), otherwise it is the original check.
+netwk:608f7c 0c188d00

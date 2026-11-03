@@ -1,0 +1,10 @@
+This repository combines parts under different licenses. Each directory's own LICENSE file applies:
+
+  ps2-web-recomp/   MIT          (ps2-web-recomp/LICENSE)
+  server/           AGPL-3.0     (server/LICENSE.txt)
+  net/gateway/      MIT          (net/gateway/LICENSE)
+  deploy/           MIT          (deploy/LICENSE)
+  run-local.sh      MIT          (same terms as net/gateway/LICENSE)
+  docs/             CC BY 4.0    (docs/LICENSE.md)
+
+No game code or data is included or licensed here. Resident Evil and Outbreak are trademarks of Capcom.

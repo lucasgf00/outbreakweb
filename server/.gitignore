@@ -1,0 +1,11 @@
+build/
+logs/
+config/local.properties
+__pycache__/
+*.pyc
+# never commit game-derived data
+*.raw
+*.iso
+*.elf
+patch.raw
+data/
